@@ -51,4 +51,37 @@ window.addEventListener("load", () => {
     localImageEl.hide();
     localVideoEl.show();
   });
+
+  //creating and joining room using room template
+  $(".submit").on("click", (event) => {
+    if (!formEL.form("is valid")) {
+      return false;
+    }
+
+    username = $("#username").val();
+    const roomName = $("#roomName").val().toLowerCase();
+    if (event.target.id === "create-btn") {
+      createRoom(roomName);
+    } else {
+      joinRoom(roomName);
+    }
+    return false;
+  });
+
+  //register new chat room
+  const createRooom = (roomName) => {
+    console.info(`Creating new room: ${roomName}`);
+    webrtc.createRoom(roomName, (err, name) => {
+      showChatRoom(name);
+      postMessage(`${username} created chatroom`)
+    })
+  }
+
+  //Join existing chat room
+  const joinRoom = roomName => {
+    console.log(`Joining Room: ${roomName}`);
+    webrtc.joinRooom(roomName);
+    showChatRoom(roomName);
+    postMessage(`${username} joined chatroom`);
+  }
 });
