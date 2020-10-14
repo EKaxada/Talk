@@ -72,25 +72,26 @@ window.addEventListener("load", () => {
   const createRooom = (roomName) => {
     console.info(`Creating new room: ${roomName}`);
     webrtc.createRoom(roomName, (err, name) => {
+      formEL.form("clear");
       showChatRoom(name);
-      postMessage(`${username} created chatroom`)
-    })
-  }
+      postMessage(`${username} created chatroom`);
+    });
+  };
 
   //Join existing chat room
-  const joinRoom = roomName => {
+  const joinRoom = (roomName) => {
     console.log(`Joining Room: ${roomName}`);
     webrtc.joinRooom(roomName);
     showChatRoom(roomName);
     postMessage(`${username} joined chatroom`);
-  }
+  };
 
   //posting local message
-  const postMessage = message => {
+  const postMessage = (message) => {
     const chatMessage = {
       username,
       message,
-      postedOn: new Date().toLocaleString("en-GB");
+      postedOn: new Date().toLocaleString("en-GB"),
     };
 
     //send to all people in chatroom
@@ -99,13 +100,13 @@ window.addEventListener("load", () => {
     messages.push(chatMessage);
     $("#post-message").val("");
     updateChatMessages();
-  }
+  };
 
   // Display chat interfaces
-  const showChatRoom = room => {
+  const showChatRoom = (room) => {
     //hide form
     formEL.hide();
-    const html = chatTemplate({room})
+    const html = chatTemplate({ room });
     chatEl.html(html);
     const postForm = $("form");
 
@@ -114,43 +115,42 @@ window.addEventListener("load", () => {
       message: "empty",
     });
     $("#post-btn").on("click", () => {
-      const message = $("3post-message").val();
+      const message = $("post-message").val();
       postMessage(message);
-    })
-    $("#post-message").on("keyup", event => {
+    });
+    $("#post-message").on("keyup", (event) => {
       if (event.keyCode === 13) {
         const message = $("#post-message").val();
-        postMessage(message)
+        postMessage(message);
       }
-    })
-  }
+    });
+  };
 
   //update chat messages
   const updateChatMessages = () => {
-    const html = chatContentTemplate({messages});
+    const html = chatContentTemplate({ messages });
     const chatContentEl = $("#chat-content");
     chatContentEl.html(html);
 
     //automatically scroll downwards
     const scrollHeight = chatContentEl.prop("scrollHeight");
-    chatContentEl.animate({scrollTop: scrollHeight
-    }, slow)
+    chatContentEl.animate({ scrollTop: scrollHeight }, "slow");
   };
 
   // receive message from user
-  webrtc.connection.on("message", data => {
-    id(data.type === "chat") {
+  webrtc.connection.on("message", (data) => {
+    if (data.type === "chat") {
       const message = data.payload;
       messages.push(message);
       updateChatMessages();
     }
-  })
+  });
 
   //adding multiple peers
   webrtc.on("videoAdded", (video, peer) => {
     const id = webrtc.getDomIn(peer);
-    const html = remoteVideoTemplate({id});
-    if(remoteVideoCount === 0) {
+    const html = remoteVideoTemplate({ id });
+    if (remoteVideoCount === 0) {
       remoteVideosEl.html(html);
     } else {
       remoteVideosEl.append(html);
@@ -158,6 +158,19 @@ window.addEventListener("load", () => {
     $(`#${id}`).html(video);
     $(`#{id} video`).addClass("ui image medium"); //makes element responsive
     remoteVideoCount += 1;
-  })
+  });
 
+  $(".submit").on("click", (event) => {
+    if (!formEl.form("is valid")) {
+      return false;
+    }
+    username = $("#username").val();
+    const roomName = $("#roomName").val().toLowerCase();
+    if (event.target.id === "create-btn") {
+      createRoom(roomName);
+    } else {
+      joinRoom(roomName);
+    }
+    return false;
+  });
 });
