@@ -1,121 +1,106 @@
 window.addEventListener("load", () => {
-  //chat platform
+  // Chat platform
   const chatTemplate = Handlebars.compile($("#chat-template").html());
   const chatContentTemplate = Handlebars.compile(
     $("#chat-content-template").html()
   );
-  const chatEl = $("chat");
-  const formEL = $(".form");
+  const chatEl = $("#chat");
+  const formEl = $(".form");
   const messages = [];
   let username;
 
-  //local video
+  // Local Video
   const localImageEl = $("#local-image");
   const localVideoEl = $("#local-video");
 
-  //Remote videos
+  // Remote Videos
   const remoteVideoTemplate = Handlebars.compile(
     $("#remote-video-template").html()
   );
   const remoteVideosEl = $("#remote-videos");
-  let remoteVideoCount = 0;
+  let remoteVideosCount = 0;
 
-  //hide camera until initialized
+  // Hide cameras until they are initialized
   localVideoEl.hide();
 
-  //Add Validation rules to Create/Join Room Form
-  formEL.form({
+  // Add validation rules to Create/Join Room Form
+  formEl.form({
     fields: {
       roomName: "empty",
-      userName: "empty",
+      username: "empty",
     },
   });
 
-  //create WebRTC connection
+  // create our webrtc connection
   const webrtc = new SimpleWebRTC({
-    //dom element to hold  the video
+    // the id/element dom element that will hold "our" video
     localVideoEl: "local-video",
-
-    //element to hold remote videos
+    // the id/element dom element that will hold remote videos
     remoteVideosEl: "remote-videos",
-
-    //immediately ask camera access
-    autoRequestMeida: true,
+    // immediately ask for camera access
+    autoRequestMedia: true,
     debug: false,
     detectSpeakingEvents: true,
     autoAdjustMic: false,
   });
 
-  //after access to local camera
+  // We got access to local camera
   webrtc.on("localStream", () => {
     localImageEl.hide();
     localVideoEl.show();
   });
 
-  //creating and joining room using room template
-  $(".submit").on("click", (event) => {
-    if (!formEL.form("is valid")) {
-      return false;
-    }
-
-    username = $("#username").val();
-    const roomName = $("#roomName").val().toLowerCase();
-    if (event.target.id === "create-btn") {
-      createRoom(roomName);
+  // Remote video was added
+  webrtc.on("videoAdded", (video, peer) => {
+    // eslint-disable-next-line no-console
+    const id = webrtc.getDomId(peer);
+    const html = remoteVideoTemplate({ id });
+    if (remoteVideosCount === 0) {
+      remoteVideosEl.html(html);
     } else {
-      joinRoom(roomName);
+      remoteVideosEl.append(html);
     }
-    return false;
+    $(`#${id}`).html(video);
+    $(`#${id} video`).addClass("ui image medium"); // Make video element responsive
+    remoteVideosCount += 1;
   });
 
-  //register new chat room
-  const createRooom = (roomName) => {
-    console.info(`Creating new room: ${roomName}`);
-    webrtc.createRoom(roomName, (err, name) => {
-      formEL.form("clear");
-      showChatRoom(name);
-      postMessage(`${username} created chatroom`);
-    });
+  // Update Chat Messages
+  const updateChatMessages = () => {
+    const html = chatContentTemplate({ messages });
+    const chatContentEl = $("#chat-content");
+    chatContentEl.html(html);
+    // automatically scroll downwards
+    const scrollHeight = chatContentEl.prop("scrollHeight");
+    chatContentEl.animate({ scrollTop: scrollHeight }, "slow");
   };
 
-  //Join existing chat room
-  const joinRoom = (roomName) => {
-    console.log(`Joining Room: ${roomName}`);
-    webrtc.joinRooom(roomName);
-    showChatRoom(roomName);
-    postMessage(`${username} joined chatroom`);
-  };
-
-  //posting local message
+  // Post Local Message
   const postMessage = (message) => {
     const chatMessage = {
       username,
       message,
       postedOn: new Date().toLocaleString("en-GB"),
     };
-
-    //send to all people in chatroom
+    // Send to all peers
     webrtc.sendToAll("chat", chatMessage);
-    //update messages locally
+    // Update messages locally
     messages.push(chatMessage);
     $("#post-message").val("");
     updateChatMessages();
   };
 
-  // Display chat interfaces
+  // Display Chat Interface
   const showChatRoom = (room) => {
-    //hide form
-    formEL.hide();
+    formEl.hide();
     const html = chatTemplate({ room });
     chatEl.html(html);
     const postForm = $("form");
-
-    //post message validation rules
     postForm.form({
       message: "empty",
     });
     $("#post-btn").on("click", () => {
-      const message = $("post-message").val();
+      const message = $("#post-message").val();
       postMessage(message);
     });
     $("#post-message").on("keyup", (event) => {
@@ -126,18 +111,27 @@ window.addEventListener("load", () => {
     });
   };
 
-  //update chat messages
-  const updateChatMessages = () => {
-    const html = chatContentTemplate({ messages });
-    const chatContentEl = $("#chat-content");
-    chatContentEl.html(html);
-
-    //automatically scroll downwards
-    const scrollHeight = chatContentEl.prop("scrollHeight");
-    chatContentEl.animate({ scrollTop: scrollHeight }, "slow");
+  // Register new Chat Room
+  const createRoom = (roomName) => {
+    // eslint-disable-next-line no-console
+    console.info(`Creating new room: ${roomName}`);
+    webrtc.createRoom(roomName, (err, name) => {
+      formEl.form("clear");
+      showChatRoom(name);
+      postMessage(`${username} created chatroom`);
+    });
   };
 
-  // receive message from user
+  // Join existing Chat Room
+  const joinRoom = (roomName) => {
+    // eslint-disable-next-line no-console
+    console.log(`Joining Room: ${roomName}`);
+    webrtc.joinRoom(roomName);
+    showChatRoom(roomName);
+    postMessage(`${username} joined chatroom`);
+  };
+
+  // Receive message from remote user
   webrtc.connection.on("message", (data) => {
     if (data.type === "chat") {
       const message = data.payload;
@@ -146,20 +140,7 @@ window.addEventListener("load", () => {
     }
   });
 
-  //adding multiple peers
-  webrtc.on("videoAdded", (video, peer) => {
-    const id = webrtc.getDomIn(peer);
-    const html = remoteVideoTemplate({ id });
-    if (remoteVideoCount === 0) {
-      remoteVideosEl.html(html);
-    } else {
-      remoteVideosEl.append(html);
-    }
-    $(`#${id}`).html(video);
-    $(`#{id} video`).addClass("ui image medium"); //makes element responsive
-    remoteVideoCount += 1;
-  });
-
+  // Room Submit Button Handler
   $(".submit").on("click", (event) => {
     if (!formEl.form("is valid")) {
       return false;
