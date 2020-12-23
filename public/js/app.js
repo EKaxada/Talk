@@ -84,4 +84,80 @@ window.addEventListener("load", () => {
     showChatRoom(roomName);
     postMessage(`${username} joined chatroom`);
   }
+
+  //posting local message
+  const postMessage = message => {
+    const chatMessage = {
+      username,
+      message,
+      postedOn: new Date().toLocaleString("en-GB");
+    };
+
+    //send to all people in chatroom
+    webrtc.sendToAll("chat", chatMessage);
+    //update messages locally
+    messages.push(chatMessage);
+    $("#post-message").val("");
+    updateChatMessages();
+  }
+
+  // Display chat interfaces
+  const showChatRoom = room => {
+    //hide form
+    formEL.hide();
+    const html = chatTemplate({room})
+    chatEl.html(html);
+    const postForm = $("form");
+
+    //post message validation rules
+    postForm.form({
+      message: "empty",
+    });
+    $("#post-btn").on("click", () => {
+      const message = $("3post-message").val();
+      postMessage(message);
+    })
+    $("#post-message").on("keyup", event => {
+      if (event.keyCode === 13) {
+        const message = $("#post-message").val();
+        postMessage(message)
+      }
+    })
+  }
+
+  //update chat messages
+  const updateChatMessages = () => {
+    const html = chatContentTemplate({messages});
+    const chatContentEl = $("#chat-content");
+    chatContentEl.html(html);
+
+    //automatically scroll downwards
+    const scrollHeight = chatContentEl.prop("scrollHeight");
+    chatContentEl.animate({scrollTop: scrollHeight
+    }, slow)
+  };
+
+  // receive message from user
+  webrtc.connection.on("message", data => {
+    id(data.type === "chat") {
+      const message = data.payload;
+      messages.push(message);
+      updateChatMessages();
+    }
+  })
+
+  //adding multiple peers
+  webrtc.on("videoAdded", (video, peer) => {
+    const id = webrtc.getDomIn(peer);
+    const html = remoteVideoTemplate({id});
+    if(remoteVideoCount === 0) {
+      remoteVideosEl.html(html);
+    } else {
+      remoteVideosEl.append(html);
+    }
+    $(`#${id}`).html(video);
+    $(`#{id} video`).addClass("ui image medium"); //makes element responsive
+    remoteVideoCount += 1;
+  })
+
 });
